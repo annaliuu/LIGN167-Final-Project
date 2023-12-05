@@ -17,7 +17,7 @@ def read_markdown_file(file_path):
 
 def process_lecture_materials(directory='lectures'):
     topics = {
-        "Introducing Language and Dialect": "l101_2_whatislanguage.md",
+        "Introducing Language and Dialect": "1_intro_to_linguistics.mov.wav.txt",
         # ... other topics and their corresponding filenames
     }
 
@@ -37,47 +37,71 @@ class QuestionBank:
     def __init__(self, api_key, lecture_materials):
         self.api_key = api_key
         self.lecture_materials = lecture_materials
-        self.user_performance = {}
 
-    def update_performance(self, topic, correct):
-        if topic not in self.user_performance:
-            self.user_performance[topic] = {'correct': 0, 'incorrect': 0}
-
-        if correct:
-            self.user_performance[topic]['correct'] += 1
-        else:
-            self.user_performance[topic]['incorrect'] += 1
+    def summarize_chunk(self, chunk):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "This is a text summarization task. Summarize the following text."},
+                    {"role": "user", "content": chunk}
+                ],
+                max_tokens=150,  # Adjust based on your needs for summary length
+                api_key=api_key
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
 
     def generate_question(self, topic):
-        performance = self.user_performance.get(
-            topic, {'correct': 0, 'incorrect': 0})
-        difficulty = "hard" if performance['correct'] > performance['incorrect'] else "easy"
-        prompt = f"Generate a {difficulty} multiple choice question about {topic}"
+        max_length = 3000
+        long_text = lecture_materials['Introducing Language and Dialect']
+        chunks = [long_text[i:i + max_length]
+                  for i in range(0, len(long_text), max_length)]
+        sum_chunks = [str(self.summarize_chunk(chunk)) for chunk in chunks]
+        summary = ''.join(sum_chunks)
 
         try:
-            response = openai.Completion.create(
-                engine="davinci",
-                prompt=prompt,
-                max_tokens=150,
-                api_key=self.api_key
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",  # Specify the engine you want to use
+                messages=[
+                    {"role": "system", "content": "This is a question generation session. Create a multiple choice question based on the provided summary."},
+                    {"role": "user", "content": f"Create a multiple choice question with four answers about the topic: Introducing Language and Dialect using this content: {summary}.\nFollow the format of this example:\nQ: How many letters in the word 'crazy'?\nA. 8\nB. 16\nC. 5\nD. 18"}
+                ],
+                max_tokens=150,  # The maximum number of tokens to generate in the response
+                api_key=api_key
             )
-            question = response.choices[0].text.strip()
-            return question
+            question = response.choices[0].message.content.strip()
+            return question, summary
         except Exception as e:
             print(f"An error occurred: {e}")
             return "Error generating question"
 
+    def generate_answer(self, question, summary):
+        answer = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # Specify the engine you want to use
+            messages=[{"role": "system", "content": "This is a question and answer session. Answer the question based on the provided summary."},
+                      {"role": "user", "content": f"What is the correct answer to {question} based on {summary}? Respond with exactly one letter, and the explanation."}],
+            # messages=f"What is the correct answer to {question} based on {summary}? Respond with exactly one letter, and the explanation.\n "
+            # "Follow this example format: "
+            # "A. Avocado. This is the answer because of blank",
+            max_tokens=150,  # The maximum number of tokens to generate in the response
+            api_key=api_key
+        )
+        return answer.choices[0].message.content.strip()
+
 
 # Example usage
 # Replace with your actual API key
-api_key = "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"
+api_key = "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"
 lecture_materials = process_lecture_materials()
 question_bank = QuestionBank(api_key, lecture_materials)
 
-# Simulate user answering questions
-question_bank.update_performance("Syntax is a Life Sentence", correct=False)
-question_bank.update_performance("Syntax is a Life Sentence", correct=True)
-
 # Generate a question based on performance
-next_question = question_bank.generate_question("Syntax is a Life Sentence")
-print(next_question)
+next_question = question_bank.generate_question(
+    'Introducing Language and Dialect')
+print(next_question[0])
+
+ans = question_bank.generate_answer(next_question[0], next_question[1])
+print(ans)
