@@ -8,6 +8,8 @@ bank will output correct or incorrect, and if the answer is incorrect, it will p
 answer. The student can then choose to generate another question about that same topic, or move on to select a different topic from the dropdown menu.
 
 ## Instructions to run the file:
+- Clone this repository locally
+- Install the relevant packages by running ```pip install streamlit``` and ```pip install openai```
 - Add your custom API key to process_materials.py and main_app.py
 - Then, to run the application, open the command line and run ```streamlit run main_app.py```
 - It should open up a local webpage containing the application
