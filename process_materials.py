@@ -111,7 +111,7 @@ class QuestionBank:
 
 # Example usage
 # Replace with your actual API key
-api_key = "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"
+api_key = "insert_api_key"
 lecture_materials = process_lecture_materials()
 question_bank = QuestionBank(api_key, lecture_materials)
 
